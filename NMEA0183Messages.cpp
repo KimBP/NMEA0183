@@ -222,6 +222,26 @@ bool NMEA0183BuildVTG(char* msg, const char Src[], double TrueCOG, double Magnet
 }
 
 //*****************************************************************************
+// $xxDPT,76.1,0.0,100*1B
+bool NMEA0183ParseDPT_nc(const tNMEA0183Msg &NMEA0183Msg,double &depth, double &offset, double &maxRange) {
+  maxRange = 0;
+
+  switch (NMEA0183Msg.FieldCount() ) {
+  case 3:
+	  maxRange = atof(NMEA0183Msg.Field(2));
+	  // Fall through
+  case 2:
+	  depth = atof(NMEA0183Msg.Field(0));
+	  offset = atof(NMEA0183Msg.Field(1));
+	  return true;
+	  break;
+  default:
+	  return false;
+  }
+}
+
+
+//*****************************************************************************
 // $HEHDT,244.71,T*1B
 bool NMEA0183ParseHDT_nc(const tNMEA0183Msg &NMEA0183Msg,double &TrueHeading) {
   bool result=( NMEA0183Msg.FieldCount()>=2 );

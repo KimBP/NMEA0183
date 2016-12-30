@@ -62,6 +62,14 @@ inline bool NMEA0183ParseVTG(const tNMEA0183Msg &NMEA0183Msg, double &TrueCOG, d
 
 bool NMEA0183BuildVTG(char* msg, const char Src[], double TrueCOG, double MagneticCOG, double SOG);
 
+// All parameters returned in meters
+bool NMEA0183ParseDPT_nc(const tNMEA0183Msg &NMEA0183Msg,double &depth, double &offset, double &maxRange);
+
+inline bool NMEA0183ParseDPT(const tNMEA0183Msg &NMEA0183Msg,double &depth, double &offset, double &maxRange) {
+	return (NMEA0183Msg.IsMessageCode("DPT") ?
+			NMEA0183ParseDPT_nc(NMEA0183Msg, depth, offset, maxRange) : false);
+}
+
 // Heading will be returned be in radians
 bool NMEA0183ParseHDT_nc(const tNMEA0183Msg &NMEA0183Msg,double &TrueHeading); 
 
