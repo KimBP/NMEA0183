@@ -27,7 +27,8 @@ tNMEA0183::tNMEA0183()
 : port(0), MsgCheckSumStartPos(-1), MsgOutIdx(0),
   MsgInPos(0), MsgOutPos(0),
   MsgInStarted(false), MsgOutStarted(false),
-  SourceID(0), MsgHandler(0)
+  SourceID(0),
+  MsgHandler(0), MsgHdlArgs(0)
 {
   for(int i=0; i < MAX_OUT_BUF;i++) {
     MsgOutBuf[i][0]='\0';
@@ -39,6 +40,11 @@ void tNMEA0183::Begin(HardwareSerial *_port, uint8_t _SourceID, unsigned long _b
   SourceID=_SourceID;
   port=_port;
   port->begin(_baud);
+//*****************************************************************************
+void tNMEA0183::SetMsgHandler(msgHdlType _MsgHandler, void* args)
+{
+	MsgHandler = _MsgHandler;
+	MsgHdlArgs = args;
 }
 
 //*****************************************************************************
@@ -46,7 +52,7 @@ void tNMEA0183::ParseMessages() {
   tNMEA0183Msg NMEA0183Msg;
   
     while (GetMessage(NMEA0183Msg)) {
-      if (MsgHandler!=0) MsgHandler(NMEA0183Msg);
+      if (MsgHandler!=0) MsgHandler(NMEA0183Msg,MsgHdlArgs);
     }
 }
 

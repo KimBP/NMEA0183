@@ -28,6 +28,9 @@ Author: Timo Lappalainen
 
 #define MAX_OUT_BUF 3
 
+
+extern "C" typedef void(*msgHdlType)(const tNMEA0183Msg &NMEA0183Msg, void* args);
+
 class tNMEA0183
 {
   protected:
@@ -43,13 +46,14 @@ class tNMEA0183
     uint8_t SourceID;  // User defined ID for this message handler
 
     // Handler callback
-    void (*MsgHandler)(const tNMEA0183Msg &NMEA0183Msg);
+    msgHdlType MsgHandler;
+    void* MsgHdlArgs;
     int nextOutIdx(int idx);
 
   public:
     tNMEA0183();
     void Begin(HardwareSerial *_port, uint8_t _SourceID=0, unsigned long _baud=4800);
-    void SetMsgHandler(void (*_MsgHandler)(const tNMEA0183Msg &NMEA0183Msg)) {MsgHandler=_MsgHandler;}
+    void SetMsgHandler(msgHdlType _MsgHandler, void* args=0);
     void ParseMessages();
     bool GetMessage(tNMEA0183Msg &NMEA0183Msg);
     bool SendMessage(const char *buf);
