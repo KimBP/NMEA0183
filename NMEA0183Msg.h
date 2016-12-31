@@ -24,6 +24,7 @@ Author: Timo Lappalainen
 #ifndef _tNMEA0183Msg_H_
 #define _tNMEA0183Msg_H_
 #include <Arduino.h>
+#include <string.h>
 #include <Serial.h>
 
 #define MAX_NMEA0183_MSG_LEN 81  // Accroding to NMEA 3.01. Can not contain multi message as in AIS
