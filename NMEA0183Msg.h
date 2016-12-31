@@ -24,6 +24,7 @@ Author: Timo Lappalainen
 #ifndef _tNMEA0183Msg_H_
 #define _tNMEA0183Msg_H_
 #include <Arduino.h>
+#include <Serial.h>
 
 #define MAX_NMEA0183_MSG_LEN 81  // Accroding to NMEA 3.01. Can not contain multi message as in AIS
 #define MAX_NMEA0183_MSG_FIELDS 20
@@ -48,7 +49,7 @@ class tNMEA0183Msg
     // Print message fields
     //void PrintFields(Stream &port) const;
     // Send message in valid NMEA0183 format
-    void Send(Stream &port) const;
+    void Send(Serial &port) const;
     // Return count of fields on message
     uint8_t FieldCount() const { return _FieldCount; }
     // Return field in null terminated string

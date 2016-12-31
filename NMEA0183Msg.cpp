@@ -102,7 +102,7 @@ void tNMEA0183Msg::Clear() {
 //}
 
 //*****************************************************************************
-void tNMEA0183Msg::Send(Stream &port) const {
+void tNMEA0183Msg::Send(Serial &port) const {
   if (FieldCount()==0) return;
   port.print(Prefix);
   port.print(Sender());
@@ -112,7 +112,7 @@ void tNMEA0183Msg::Send(Stream &port) const {
     port.print(Field(i));
   }
   port.print("*");
-  port.print(CheckSum,HEX);
+  port.print(CheckSum,Serial::HEX);
   port.print("\r\n"); 
 }
 
