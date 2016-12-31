@@ -23,8 +23,9 @@ Author: Timo Lappalainen
 
 #ifndef _tNMEA0183_MESSAGES_H_
 #define _tNMEA0183_MESSAGES_H_
-#include <TimeLib.h>
+//#include <TimeLib.h>
 #include <NMEA0183Msg.h>
+#include <ctime>
 
 bool NMEA0183ParseGGA_nc(const tNMEA0183Msg &NMEA0183Msg, double &GPSTime, double &Latitude, double &Longitude,
                       int &GPSQualityIndicator, int &SatelliteCount, double &HDOP, double &Altitude, double &GeoidalSeparation,
@@ -69,6 +70,7 @@ inline bool NMEA0183ParseDPT(const tNMEA0183Msg &NMEA0183Msg,double &depth, doub
 	return (NMEA0183Msg.IsMessageCode("DPT") ?
 			NMEA0183ParseDPT_nc(NMEA0183Msg, depth, offset, maxRange) : false);
 }
+
 
 // Heading will be returned be in radians
 bool NMEA0183ParseHDT_nc(const tNMEA0183Msg &NMEA0183Msg,double &TrueHeading); 

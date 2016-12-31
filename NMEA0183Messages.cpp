@@ -22,6 +22,9 @@ Author: Timo Lappalainen
 */
 
 #include <NMEA0183Messages.h>
+#include <cstdlib>
+#include <cmath>
+#include <cstdio>
 
 const double pi=3.1415926535897932384626433832795;
 const double kmhToms=1000.0/3600.0; 
@@ -73,36 +76,36 @@ double NMEA0183GPTimeToSeconds(const char *data) {
 }
 
 time_t NMEA0183GPSDateTimetotime_t(const char *dateStr, const char *timeStr) {
-  tmElements_t TimeElements;
+  struct tm TimeElements;
   char StrCvt[3]="00";
 
     if (timeStr!=0 && strlen(timeStr)>=6) {
       StrCvt[0]=timeStr[0]; StrCvt[1]=timeStr[1]; 
-      TimeElements.Hour=atoi(StrCvt);
+      TimeElements.tm_hour=atoi(StrCvt);
       StrCvt[0]=timeStr[2]; StrCvt[1]=timeStr[3]; 
-      TimeElements.Minute=atoi(StrCvt);
+      TimeElements.tm_min=atoi(StrCvt);
       StrCvt[0]=timeStr[4]; StrCvt[1]=timeStr[5]; 
-      TimeElements.Second=atoi(StrCvt)+30;
+      TimeElements.tm_sec=atoi(StrCvt)+30;
     } else {
-      TimeElements.Second=0;
-      TimeElements.Minute=0;
-      TimeElements.Hour=0;
+      TimeElements.tm_sec=0;
+      TimeElements.tm_min=0;
+      TimeElements.tm_hour=0;
     }
     
     if (dateStr!=0 && strlen(dateStr)==6) {
       StrCvt[0]=dateStr[0]; StrCvt[1]=dateStr[1]; 
-      TimeElements.Day=atoi(StrCvt);
+      TimeElements.tm_mday=atoi(StrCvt);
       StrCvt[0]=dateStr[2]; StrCvt[1]=dateStr[3]; 
-      TimeElements.Month=atoi(StrCvt);
+      TimeElements.tm_mon=atoi(StrCvt);
       StrCvt[0]=dateStr[4]; StrCvt[1]=dateStr[5]; 
-      TimeElements.Year=atoi(StrCvt)+30;
+      TimeElements.tm_year=atoi(StrCvt)+30;
     } else {
-      TimeElements.Day=0;
-      TimeElements.Month=0;
-      TimeElements.Year=0;
+      TimeElements.tm_mday=0;
+      TimeElements.tm_mon=0;
+      TimeElements.tm_year=0;
     }
     
-    return makeTime(TimeElements);
+    return mktime(&TimeElements);
 } 
 
 //*****************************************************************************
@@ -146,7 +149,8 @@ bool NMEA0183ParseRMC_nc(const tNMEA0183Msg &NMEA0183Msg, double &GPSTime, doubl
     TrueCOG=atof(NMEA0183Msg.Field(7))*degToRad;
     
     lDT=NMEA0183GPSDateTimetotime_t(NMEA0183Msg.Field(8),0)+floor(GPSTime);
-    DaysSince1970=elapsedDays(lDT);
+    DaysSince1970=0; // Deprecated for now
+    //DaysSince1970=elapsedDays(lDT);
     if (DateTime!=0) *DateTime=lDT;
     Variation=atof(NMEA0183Msg.Field(9))*degToRad; if (NMEA0183Msg.Field(10)[0]=='W') Variation=-Variation;
   }
@@ -285,3 +289,4 @@ bool NMEA0183ParseVDM_nc(const tNMEA0183Msg &NMEA0183Msg,
 
   return result;
 }
+
