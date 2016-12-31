@@ -75,7 +75,7 @@ bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
           MsgInPos=0;
           MsgCheckSumStartPos=-1;  
         }
-        if (MsgInPos>=MAX_NMEA0183_MSG_BUF_LEN) { // Too may chars in message. Start from beginning
+        if (MsgInPos>=MAX_NMEA0183_MSG_LEN) { // Too many chars in message. Start from beginning
           MsgInStarted=false;
           MsgInPos=0;
           MsgCheckSumStartPos=-1;  
@@ -120,7 +120,7 @@ void tNMEA0183::kick() {
 //*****************************************************************************
 bool tNMEA0183::SendMessage(const char *buf) {
 
-  if(strlen(buf) >= MAX_NMEA0183_MSG_BUF_LEN)
+  if(strlen(buf) >= MAX_NMEA0183_MSG_LEN)
     return false;
 
   bool result=true;

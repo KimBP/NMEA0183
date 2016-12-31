@@ -26,7 +26,6 @@ Author: Timo Lappalainen
 #include <Arduino.h>
 #include <NMEA0183Msg.h>
 
-#define MAX_NMEA0183_MSG_BUF_LEN 81  // Accroding to NMEA 3.01. Can not contain multi message as in AIS
 #define MAX_OUT_BUF 3
 
 class tNMEA0183
@@ -34,8 +33,8 @@ class tNMEA0183
   protected:
     HardwareSerial *port;
     int MsgCheckSumStartPos;
-    char MsgInBuf[MAX_NMEA0183_MSG_BUF_LEN];
-    char MsgOutBuf[MAX_OUT_BUF][MAX_NMEA0183_MSG_BUF_LEN];
+    char MsgInBuf[MAX_NMEA0183_MSG_LEN];
+    char MsgOutBuf[MAX_OUT_BUF][MAX_NMEA0183_MSG_LEN];
     int MsgOutIdx;
     int MsgInPos;
     int MsgOutPos;
