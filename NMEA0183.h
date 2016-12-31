@@ -44,6 +44,7 @@ class tNMEA0183
     bool MsgInStarted;
     bool MsgOutStarted;
     uint8_t SourceID;  // User defined ID for this message handler
+    bool BlockingOnRead;
 
     // Handler callback
     msgHdlType MsgHandler;
@@ -52,10 +53,14 @@ class tNMEA0183
 
   public:
     tNMEA0183();
-    void Begin(HardwareSerial *_port, uint8_t _SourceID=0, unsigned long _baud=4800);
+    void Begin(HardwareSerial *_port, uint8_t _SourceID=0, unsigned long _baud=4800, bool blockOnRead=false);
     void SetMsgHandler(msgHdlType _MsgHandler, void* args=0);
+
+    /* For incoming messages */
     void ParseMessages();
     bool GetMessage(tNMEA0183Msg &NMEA0183Msg);
+
+    /* For outgoing messages */
     bool SendMessage(const char *buf);
     void kick();
 };

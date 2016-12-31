@@ -28,6 +28,7 @@ tNMEA0183::tNMEA0183()
   MsgInPos(0), MsgOutPos(0),
   MsgInStarted(false), MsgOutStarted(false),
   SourceID(0),
+  BlockingOnRead(false),
   MsgHandler(0), MsgHdlArgs(0)
 {
   for(int i=0; i < MAX_OUT_BUF;i++) {
@@ -36,10 +37,15 @@ tNMEA0183::tNMEA0183()
 }
 
 //*****************************************************************************
-void tNMEA0183::Begin(HardwareSerial *_port, uint8_t _SourceID, unsigned long _baud) {
+void tNMEA0183::Begin(HardwareSerial *_port, uint8_t _SourceID, unsigned long _baud, bool blockOnRead) {
   SourceID=_SourceID;
+  BlockingOnRead = blockOnRead;
   port=_port;
   port->begin(_baud);
+  port->blockOnRead(BlockingOnRead);
+
+}
+
 //*****************************************************************************
 void tNMEA0183::SetMsgHandler(msgHdlType _MsgHandler, void* args)
 {
@@ -60,7 +66,11 @@ void tNMEA0183::ParseMessages() {
 bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
   bool result=false;
 
-  while (port->available() > 0 && !result) {
+  while (!result) {
+	if(!BlockingOnRead && !port->available()) {
+		return false;
+	}
+
     int NewByte=port->read();
       if (NewByte=='$' || NewByte=='!') { // Message start
         MsgInStarted=true;
@@ -112,7 +122,7 @@ void tNMEA0183::kick() {
       if (MsgOutBuf[MsgOutIdx][MsgOutPos] == '\0') {
         // Done with this message - clear it and prepare for next
         MsgOutBuf[MsgOutIdx][0] = '\0';
-	MsgOutIdx = nextOutIdx(MsgOutIdx);
+        MsgOutIdx = nextOutIdx(MsgOutIdx);
         MsgOutPos=0;
         if (MsgOutBuf[MsgOutIdx][0] == '\0') {
           MsgOutStarted=false;
