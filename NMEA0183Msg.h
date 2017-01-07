@@ -39,10 +39,11 @@ class tNMEA0183Msg
     uint8_t Fields[MAX_NMEA0183_MSG_FIELDS];
     uint8_t _FieldCount;
     uint8_t CheckSum;
+    uint8_t ignoreChecksum;
   public:
     uint8_t SourceID;  // This is used to separate messages e.g. from different ports. Receiver must set this.
   public:
-    tNMEA0183Msg();
+    tNMEA0183Msg(uint8_t ignoreChecksum = false);
     // Set message from received null terminated buffer. Returns true if checksum is OK.
     bool SetMessage(const char *buf);
     // Clear message

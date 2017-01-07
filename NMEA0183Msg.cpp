@@ -23,7 +23,9 @@ Author: Timo Lappalainen
 
 #include <NMEA0183Msg.h>
 
-tNMEA0183Msg::tNMEA0183Msg() {
+tNMEA0183Msg::tNMEA0183Msg(uint8_t ignoreChecksum)
+: ignoreChecksum(ignoreChecksum)
+{
   Clear();
 }
 
@@ -76,7 +78,8 @@ bool tNMEA0183Msg::SetMessage(const char *buf) {
   csMsg=(buf[i]<=57?buf[i]-48:buf[i]-55)<<4; i++;
   csMsg|=(buf[i]<=57?buf[i]-48:buf[i]-55);
   
-  if (csMsg==CheckSum) { 
+
+  if (csMsg==CheckSum || ignoreChecksum) {
     result=true;
   } else {
     Clear();
