@@ -57,7 +57,7 @@ class tNMEA0183
     void SetMsgHandler(msgHdlType _MsgHandler, void* args=0);
 
     /* For incoming messages */
-    void ParseMessages();
+    void ParseMessages(bool ignoreChecksum = false);
     bool GetMessage(tNMEA0183Msg &NMEA0183Msg);
 
     /* For outgoing messages */

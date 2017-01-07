@@ -54,8 +54,8 @@ void tNMEA0183::SetMsgHandler(msgHdlType _MsgHandler, void* args)
 }
 
 //*****************************************************************************
-void tNMEA0183::ParseMessages() {
-  tNMEA0183Msg NMEA0183Msg;
+void tNMEA0183::ParseMessages(bool ignoreChecksum) {
+  tNMEA0183Msg NMEA0183Msg(ignoreChecksum);
   
     while (GetMessage(NMEA0183Msg)) {
       if (MsgHandler!=0) MsgHandler(NMEA0183Msg,MsgHdlArgs);
