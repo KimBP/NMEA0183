@@ -19,6 +19,8 @@ Author: Timo Lappalainen
 #include <NMEA0183Messages.h>
 #include "NMEA0183Handlers.h"
 
+extern tNMEA0183 NMEA0183_Out;
+
 struct tNMEA0183Handler {
   const char *Code;
   void (*Handler)(const tNMEA0183Msg &NMEA0183Msg); 
@@ -43,15 +45,18 @@ tNMEA0183Handler NMEA0183Handlers[]={
   {0,0}
 };
 
+// *****************************************************************************
 void InitNMEA0183Handlers(tNMEA2000 *_NMEA2000, tBoatData *_BoatData) {
   pNMEA2000=_NMEA2000;
   pBD=_BoatData;
 }
 
+// *****************************************************************************
 void DebugNMEA0183Handlers(Stream* _stream) {
   NMEA0183HandlersDebugStream=_stream;
 }
 
+// *****************************************************************************
 tN2kGNSSmethod GNSMethofNMEA0183ToN2k(int Method) {
   switch (Method) {
     case 0: return N2kGNSSm_noGNSS;
@@ -61,17 +66,23 @@ tN2kGNSSmethod GNSMethofNMEA0183ToN2k(int Method) {
   }
 }
 
+// *****************************************************************************
 void HandleNMEA0183Msg(const tNMEA0183Msg &NMEA0183Msg) {
   int iHandler;
   // Find handler
   for (iHandler=0; NMEA0183Handlers[iHandler].Code!=0 && !NMEA0183Msg.IsMessageCode(NMEA0183Handlers[iHandler].Code); iHandler++);
+  
   if (NMEA0183Handlers[iHandler].Code!=0) {
     NMEA0183Handlers[iHandler].Handler(NMEA0183Msg); 
   }
+  
+  // Forward all NMEA0183 messages to the NMEA0183 out stream
+  NMEA0183_Out.SendMessage(NMEA0183Msg);
 }
 
 // NMEA0183 message Handler functions
 
+// *****************************************************************************
 void HandleRMC(const tNMEA0183Msg &NMEA0183Msg) {
   if (pBD==0) return;
   
@@ -79,6 +90,7 @@ void HandleRMC(const tNMEA0183Msg &NMEA0183Msg) {
   } else if (NMEA0183HandlersDebugStream!=0) { NMEA0183HandlersDebugStream->println("Failed to parse RMC"); }
 }
 
+// *****************************************************************************
 void HandleGGA(const tNMEA0183Msg &NMEA0183Msg) {
   if (pBD==0) return;
   
@@ -87,6 +99,8 @@ void HandleGGA(const tNMEA0183Msg &NMEA0183Msg) {
                    pBD->DGPSAge,pBD->DGPSReferenceStationID)) {
     if (pNMEA2000!=0) {
       tN2kMsg N2kMsg;
+      SetN2kMagneticVariation(N2kMsg,1,N2kmagvar_Calc,pBD->DaysSince1970,pBD->Variation);
+      pNMEA2000->SendMsg(N2kMsg); 
       SetN2kGNSS(N2kMsg,1,pBD->DaysSince1970,pBD->GPSTime,pBD->Latitude,pBD->Longitude,pBD->Altitude,
                 N2kGNSSt_GPS,GNSMethofNMEA0183ToN2k(pBD->GPSQualityIndicator),pBD->SatelliteCount,pBD->HDOP,0,
                 pBD->GeoidalSeparation,1,N2kGNSSt_GPS,pBD->DGPSReferenceStationID,pBD->DGPSAge
@@ -111,6 +125,7 @@ void HandleGGA(const tNMEA0183Msg &NMEA0183Msg) {
 
 #define PI_2 6.283185307179586476925286766559
 
+// *****************************************************************************
 void HandleHDT(const tNMEA0183Msg &NMEA0183Msg) {
   if (pBD==0) return;
   
@@ -120,9 +135,8 @@ void HandleHDT(const tNMEA0183Msg &NMEA0183Msg) {
       double MHeading=pBD->TrueHeading-pBD->Variation;
       while (MHeading<0) MHeading+=PI_2;
       while (MHeading>=PI_2) MHeading-=PI_2;
-      // Stupid Raymarine can not use true heading
-      SetN2kMagneticHeading(N2kMsg,1,MHeading,0,pBD->Variation);
-//      SetN2kPGNTrueHeading(N2kMsg,1,pBD->TrueHeading);
+//      SetN2kMagneticHeading(N2kMsg,1,MHeading,0,pBD->Variation);
+      SetN2kTrueHeading(N2kMsg,1,pBD->TrueHeading);
       pNMEA2000->SendMsg(N2kMsg);
     }
     if (NMEA0183HandlersDebugStream!=0) {
@@ -131,6 +145,7 @@ void HandleHDT(const tNMEA0183Msg &NMEA0183Msg) {
   } else if (NMEA0183HandlersDebugStream!=0) { NMEA0183HandlersDebugStream->println("Failed to parse HDT"); }
 }
 
+// *****************************************************************************
 void HandleVTG(const tNMEA0183Msg &NMEA0183Msg) {
  double MagneticCOG;
   if (pBD==0) return;

@@ -27,16 +27,13 @@
 #include "NMEA0183Handlers.h"
 #include "BoatData.h"
 
-#include <due_can.h>  // https://github.com/collin80/due_can
-#include <NMEA2000_due.h>
-tNMEA2000_due NMEA2000;
+#include <NMEA2000_CAN.h>  // This will automatically choose right CAN library and create suitable NMEA2000 object
 
 #define NMEA0183SourceGPSCompass 3
 #define NMEA0183SourceGPS 1
 
 tBoatData BoatData;
 
-tNMEA0183Msg NMEA0183Msg;
 tNMEA0183 NMEA0183_3;
 
 void setup() {
@@ -66,7 +63,9 @@ void setup() {
   InitNMEA0183Handlers(&NMEA2000, &BoatData);
   NMEA0183_3.SetMsgHandler(HandleNMEA0183Msg);
 
-  NMEA0183_3.Begin(&Serial3,NMEA0183SourceGPSCompass, 19200);
+  Serial3.begin(19200);
+  NMEA0183_3.SetMessageStream(&Serial3);
+  NMEA0183_3.Open();
 }
 
 void loop() {
@@ -83,7 +82,7 @@ void SendSystemTime() {
   tN2kMsg N2kMsg;
 
   if ( (TimeUpdated+TimeUpdatePeriod<millis()) && BoatData.DaysSince1970>0 ) {
-    SetN2kPGNSystemTime(N2kMsg, 0, BoatData.DaysSince1970, BoatData.GPSTime);
+    SetN2kSystemTime(N2kMsg, 0, BoatData.DaysSince1970, BoatData.GPSTime);
     TimeUpdated=millis();
     NMEA2000.SendMsg(N2kMsg);
   }

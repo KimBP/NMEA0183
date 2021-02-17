@@ -1,57 +1,94 @@
-/* 
+/*
 NMEA0183.cpp
 
-2015 Copyright (c) Kave Oy, www.kave.fi  All right reserved.
+Copyright (c) 2015-2021 Timo Lappalainen, Kave Oy, www.kave.fi
 
-Author: Timo Lappalainen
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-
-  1301  USA
 */
 
-#include <NMEA0183.h>
+#ifndef ARDUINO
+#include <cstdio>
+#endif
+#include "NMEA0183.h"
 
-tNMEA0183::tNMEA0183()
-: port(0), MsgCheckSumStartPos(-1), MsgOutIdx(0),
-  MsgInPos(0), MsgOutPos(0),
-  MsgInStarted(false), MsgOutStarted(false),
-  SourceID(0), MsgHandler(0)
+//*****************************************************************************
+tNMEA0183::tNMEA0183(tNMEA0183Stream *stream, uint8_t _SourceID)
+: port(0), MsgCheckSumStartPos(SIZE_MAX),
+  MsgInPos(0), MsgInStarted(false),
+  MsgOutWritePos(0), MsgOutReadPos(0), MsgOutBuf(0), MsgOutBufSize(3*MAX_NMEA0183_MSG_BUF_LEN),
+  MsgHandler(0)
 {
-  for(int i=0; i < MAX_OUT_BUF;i++) {
-    MsgOutBuf[i][0]='\0';
-  }
+  SetMessageStream(stream,_SourceID);
 }
 
 //*****************************************************************************
-void tNMEA0183::Begin(HardwareSerial *_port, uint8_t _SourceID, unsigned long _baud) {
+void tNMEA0183::SetMessageStream(tNMEA0183Stream *stream, uint8_t _SourceID) {
   SourceID=_SourceID;
-  port=_port;
-  port->begin(_baud);
+  port=stream;
+}
+
+//*****************************************************************************
+bool tNMEA0183::Open() {
+  if ( !IsOpen() ) {
+    if ( MsgOutBuf==0 ) MsgOutBuf=new char[MsgOutBufSize];
+    MsgInPos=0; MsgInStarted=false;
+    MsgOutWritePos=0; MsgOutReadPos=0;
+
+    return IsOpen();
+  }
+
+  return true;
+}
+
+#ifdef ARDUINO
+//*****************************************************************************
+void tNMEA0183::Begin(HardwareSerial *_port, uint8_t _SourceID, unsigned long _baud) {
+  _port->begin(_baud);
+  SetMessageStream(_port,_SourceID);
+
+  Open();
+}
+#endif
+
+//*****************************************************************************
+void tNMEA0183::SetSendBufferSize(size_t size) {
+  if ( MsgOutBuf==0 ) {
+    MsgOutBufSize=size;
+  }
 }
 
 //*****************************************************************************
 void tNMEA0183::ParseMessages() {
   tNMEA0183Msg NMEA0183Msg;
-  
+
+    if ( !Open() ) return;
+
     while (GetMessage(NMEA0183Msg)) {
       if (MsgHandler!=0) MsgHandler(NMEA0183Msg);
     }
+    kick();
 }
 
 //*****************************************************************************
 bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
+  if ( !IsOpen() ) return false;
+
   bool result=false;
 
   while (port->available() > 0 && !result) {
@@ -65,7 +102,7 @@ bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
         MsgInBuf[MsgInPos]=NewByte;
         if (NewByte=='*') MsgCheckSumStartPos=MsgInPos;
         MsgInPos++;
-        if (MsgCheckSumStartPos>0 and MsgCheckSumStartPos+3==MsgInPos) { // We have full checksum and so full message
+        if (MsgCheckSumStartPos!=SIZE_MAX and MsgCheckSumStartPos+3==MsgInPos) { // We have full checksum and so full message
             MsgInBuf[MsgInPos]=0; // add null termination
           if (NMEA0183Msg.SetMessage(MsgInBuf)) {
             NMEA0183Msg.SourceID=SourceID;
@@ -73,72 +110,97 @@ bool tNMEA0183::GetMessage(tNMEA0183Msg &NMEA0183Msg) {
           }
           MsgInStarted=false;
           MsgInPos=0;
-          MsgCheckSumStartPos=-1;  
+          MsgCheckSumStartPos=SIZE_MAX;
         }
         if (MsgInPos>=MAX_NMEA0183_MSG_BUF_LEN) { // Too may chars in message. Start from beginning
           MsgInStarted=false;
           MsgInPos=0;
-          MsgCheckSumStartPos=-1;  
+          MsgCheckSumStartPos=SIZE_MAX;
         }
       }
   }
-  
+
   return result;
 }
 
 //*****************************************************************************
-int tNMEA0183::nextOutIdx(int idx)
-{
-  idx++;
-  if (idx >= MAX_OUT_BUF) {
-    idx = 0;
+bool tNMEA0183::SendMessage(const tNMEA0183Msg &NMEA0183Msg) {
+  if ( !Open() ) return false;
+
+  char buf[7]={NMEA0183Msg.GetPrefix(),0};
+
+  SendBuf(buf);
+  SendBuf(NMEA0183Msg.Sender());
+  SendBuf(NMEA0183Msg.MessageCode());
+  for (int i=0; i<NMEA0183Msg.FieldCount(); i++) {
+    SendBuf(",");
+    SendBuf(NMEA0183Msg.Field(i));
   }
-  return idx;
+  sprintf(buf,"*%02X\r\n",NMEA0183Msg.GetCheckSum());
+  return SendBuf(buf);
+}
+
+//*****************************************************************************
+// availableForWrite does not exists on all implementations.
+bool tNMEA0183::CanSendByte() {
+  #if defined(ARDUINO_ARCH_ESP32)
+  return true;
+  #else
+  return port->availableForWrite() > 0;
+  #endif
 }
 
 //*****************************************************************************
 void tNMEA0183::kick() {
-  if (MsgOutBuf[MsgOutIdx][0] != '\0') {
-    MsgOutStarted = true;
-    while(port->availableForWrite() > 0) {
-      port->write(MsgOutBuf[MsgOutIdx][MsgOutPos]);
-      MsgOutPos++;
-      if (MsgOutBuf[MsgOutIdx][MsgOutPos] == '\0') {
-        // Done with this message - clear it and prepare for next
-        MsgOutBuf[MsgOutIdx][0] = '\0';
-	MsgOutIdx = nextOutIdx(MsgOutIdx);
-        MsgOutPos=0;
-        if (MsgOutBuf[MsgOutIdx][0] == '\0') {
-          MsgOutStarted=false;
-        }
-        return;
-      }
-    }
+  if ( !Open() ) return;
+
+  while ( MsgOutWritePos!=MsgOutReadPos && CanSendByte() ) {
+    port->write(MsgOutBuf[MsgOutReadPos]);
+    MsgOutReadPos=(MsgOutReadPos + 1) % MsgOutBufSize;
   }
 }
 
 //*****************************************************************************
-bool tNMEA0183::SendMessage(const char *buf) {
+bool tNMEA0183::SendBuf(const char *buf) {
+  kick();
 
-  if(strlen(buf) >= MAX_NMEA0183_MSG_BUF_LEN)
+  if ( buf==0 ) return true;
+
+  size_t iBuf=0;
+
+  if ( MsgOutWritePos==MsgOutReadPos ) { // try to send immediately
+    for (; CanSendByte() > 0 && buf[iBuf]!=0; iBuf++ ) {
+      port->write(buf[iBuf]);
+    }
+  }
+
+  if ( buf[iBuf]==0 ) {
+    return true;
+  }
+
+  // Could not send immediately, so buffer message
+  if ( strlen(buf)-iBuf >= MsgOutBufFreeSize() ) return false; // No room for message
+
+  size_t wp=MsgOutWritePos;
+
+  for (size_t temp = (MsgOutWritePos + 1) % MsgOutBufSize;
+       buf[iBuf]!=0 && temp!=MsgOutReadPos;
+       temp = (MsgOutWritePos + 1) % MsgOutBufSize ) {
+    MsgOutBuf[MsgOutWritePos]=buf[iBuf];
+    MsgOutWritePos=temp;
+  }
+
+  if ( buf[iBuf]!=0 ) {
+    MsgOutWritePos=wp;  // Cancel sending
     return false;
+  }
 
-  bool result=true;
-  int bufIdx = MsgOutIdx;
-  if(MsgOutStarted) {
-    result=false;
-    do {
-      bufIdx = nextOutIdx(bufIdx);
-      if (MsgOutBuf[bufIdx][0] != '\0') {
-        result=true; // Yep it is free
-      }
-    } while ((result==false) && (bufIdx != MsgOutIdx) );
-  }
-  if (result==true) {
-    strcpy(&MsgOutBuf[bufIdx][0],buf);
-    kick();
-  }
-  return result;
+  return true;
 }
 
-
+//*****************************************************************************
+bool tNMEA0183::SendMessage(const char *buf) {
+  if ( !Open() ) return false;
+  // Add check that there is crlf at end.
+  return SendBuf(buf);
+}
