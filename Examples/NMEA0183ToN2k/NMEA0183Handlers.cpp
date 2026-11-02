@@ -19,10 +19,10 @@ Author: Timo Lappalainen
 #include <NMEA0183Messages.h>
 #include "NMEA0183Handlers.h"
 
-typedef struct {
-  char *Code;
+struct tNMEA0183Handler {
+  const char *Code;
   void (*Handler)(const tNMEA0183Msg &NMEA0183Msg); 
-} tNMEA0183Handler;
+};
 
 // Predefinition for functions to make it possible for constant definition for NMEA0183Handlers
 void HandleRMC(const tNMEA0183Msg &NMEA0183Msg);
@@ -121,7 +121,7 @@ void HandleHDT(const tNMEA0183Msg &NMEA0183Msg) {
       while (MHeading<0) MHeading+=PI_2;
       while (MHeading>=PI_2) MHeading-=PI_2;
       // Stupid Raymarine can not use true heading
-      SetN2kPGNMagneticHeading(N2kMsg,1,MHeading,0,pBD->Variation);
+      SetN2kMagneticHeading(N2kMsg,1,MHeading,0,pBD->Variation);
 //      SetN2kPGNTrueHeading(N2kMsg,1,pBD->TrueHeading);
       pNMEA2000->SendMsg(N2kMsg);
     }
